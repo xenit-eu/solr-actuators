@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+description = "Xenit endpoint to retrieve solr readiness"
+group = 'eu.xenit.solr-actuators'
+
+ext {
+    solrVersion = '6.6.5'
+    assVersion = '2.0.0'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
+
+configurations {
+    sharedJar
+    provided
+    compile.extendsFrom(provided)
+}
+
+dependencies {
+    // compile against solr6 libraries
+    provided("org.apache.solr:solr-core:${solrVersion}") {
+        exclude group: 'org.restlet.jee' // Only available in JCenter, not essential in this project.
+    }
+    provided "org.alfresco:alfresco-search:${assVersion}"
+}
+
+artifacts.add('sharedJar', jar)
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact tasks.jar
+        }
+    }
+}
+
+
+

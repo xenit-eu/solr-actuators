@@ -1,0 +1,5 @@
+<xi:include href="onPurposeNonExistingFile.xml" xmlns:xi="http://www.w3.org/2001/XInclude">
+    <xi:fallback>
+        <requestHandler name="/xenit/actuators/readiness" class="eu.xenit.actuators.handler.ReadinessHandler"/>
+    </xi:fallback>
+</xi:include>

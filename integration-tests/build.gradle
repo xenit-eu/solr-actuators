@@ -1,0 +1,87 @@
+plugins {
+    id 'java'
+}
+
+ext {
+    slf4jVersion = '1.7.25'
+    junitJupiterVersion = '5.4.2'
+    mockitoVersion = '2.27.0'
+    hamcrestVersion = '1.3'
+    restAssuredVersion = '4.0.0'
+}
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testImplementation "org.hamcrest:hamcrest-all:${hamcrestVersion}"
+    testImplementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+
+    testImplementation group: 'org.slf4j', name: 'slf4j-api', version: "${slf4jVersion}"
+    testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: "${slf4jVersion}"
+}
+
+
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'eu.xenit.docker'
+    apply plugin: 'eu.xenit.docker-compose.auto'
+    apply from: "${project.projectDir}/overload.gradle"
+
+    description = "Solr ${flavor} with Actuators"
+
+
+    configurations {
+        actuatorsJar
+        integrationTestCompile.extendsFrom testCompile
+        integrationTestRuntime.extendsFrom testRuntime
+    }
+
+    dependencies {
+        actuatorsJar project(path: ":solr-actuators", configuration: "sharedJar")
+    }
+
+    sourceSets {
+        integrationTest {
+            java {
+                srcDir file("$project.parent.projectDir/src/java")
+            }
+        }
+    }
+
+    createDockerFile {
+        from "${solrBaseImage}"
+
+        dependsOn(configurations.actuatorsJar)
+
+        if(flavor == "solr6") {
+            smartCopy "${project.parent.projectDir}/src/resources/solr6/solrconfig_insight.xml", "/opt/alfresco-search-services/solrhome/templates/rerank/conf/solrconfig_insight.xml"
+            smartCopy configurations.actuatorsJar.singleFile, "/opt/alfresco-search-services/solrhome/lib/"
+        } else {
+            smartCopy "${project.parent.projectDir}/src/resources/solr4/solrconfig.xml", "/opt/alfresco/solr4/workspace-SpacesStore/conf/solrconfig.xml"
+            smartCopy configurations.actuatorsJar.singleFile, "/opt/alfresco/solr4/lib/"
+        }
+    }
+
+
+    task integrationTest(type: Test, group: 'verification') {
+        testClassesDirs = sourceSets.integrationTest.output.classesDirs
+        classpath = sourceSets.integrationTest.runtimeClasspath
+        outputs.upToDateWhen { false }
+
+        doFirst {
+            dockerCompose.exposeAsSystemProperties(integrationTest)
+        }
+    }
+
+    check.dependsOn integrationTest
+
+    dockerCompose {
+        isRequiredBy(integrationTest)
+        useComposeFiles = [
+                "${project.parent.projectDir}/src/resources/compose/docker-compose.yml"
+        ]
+    }
+}
