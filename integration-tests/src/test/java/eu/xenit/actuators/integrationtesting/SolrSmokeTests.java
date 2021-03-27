@@ -1,9 +1,10 @@
-package eu.xenit.actuators.handler;
+package eu.xenit.actuators.integrationtesting;
 
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.specification.RequestSpecification;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 
 import static io.restassured.RestAssured.given;
 import static java.lang.Thread.sleep;
@@ -14,8 +15,10 @@ public class SolrSmokeTests {
 
     @BeforeClass
     public static void setup() {
-
+        String flavor = System.getProperty("flavor");
         String basePathSolr = "solr/alfresco/xenit/actuators/readiness";
+	if("solr4".equals(flavor))
+	    basePathSolr = "solr4/alfresco/xenit/actuators/readiness";
         String solrHost = System.getProperty("solr.host");
 
         int solrPort = 0;
@@ -25,6 +28,7 @@ public class SolrSmokeTests {
             System.out.println("Solr port 8080 is not exposed, probably ssl is enabled");
         }
 
+	System.out.println("Looking at " + solrHost + ":" + solrPort + "/" + basePathSolr + " where flavor=" + flavor);
         String baseURISolr = "http://" + solrHost;
 
         spec = new RequestSpecBuilder()
