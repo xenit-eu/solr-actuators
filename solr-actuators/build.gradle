@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
 }
 
 description = "Xenit endpoint to retrieve solr readiness"
@@ -13,6 +13,8 @@ ext {
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+    withJavadocJar()
+    withSourcesJar()
 }
 
 configurations {
@@ -35,10 +37,6 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            artifact tasks.jar
         }
     }
 }
-
-
-

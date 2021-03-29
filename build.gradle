@@ -8,7 +8,7 @@ subprojects {
     version = '0.0.1'
 
 
-    boolean isRelease = System.env.BRANCH_NAME?.startsWith("release")
+    boolean isRelease = System.env.BRANCH_NAME?.startsWith("master")
     if (!isRelease)
         version += "-SNAPSHOT"
 
