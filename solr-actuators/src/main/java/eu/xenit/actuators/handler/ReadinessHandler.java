@@ -20,7 +20,7 @@ public class ReadinessHandler extends RequestHandlerBase {
     private static final Logger logger = LoggerFactory.getLogger(ReadinessHandler.class);
     private static final long MAX_LAG = 1800L;
 
-    Object invokeHack(Object target, String... methods) throws Exception {
+    Object invokeMethods(Object target, String... methods) throws Exception {
         for (String methodName : methods) {
             Method method = target.getClass().getMethod(methodName);
             target = method.invoke(target);
@@ -33,9 +33,9 @@ public class ReadinessHandler extends RequestHandlerBase {
     public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
         AlfrescoCoreAdminHandler coreAdminHandler = null;
         if(isSolr6(req)) {
-            coreAdminHandler = (AlfrescoCoreAdminHandler) invokeHack(req,"getCore","getCoreContainer","getMultiCoreHandler");
+            coreAdminHandler = (AlfrescoCoreAdminHandler) invokeMethods(req,"getCore","getCoreContainer","getMultiCoreHandler");
         } else {
-            coreAdminHandler = (AlfrescoCoreAdminHandler)invokeHack(req,"getCore","getCoreDescriptor","getCoreContainer","getMultiCoreHandler");
+            coreAdminHandler = (AlfrescoCoreAdminHandler) invokeMethods(req,"getCore","getCoreDescriptor","getCoreContainer","getMultiCoreHandler");
         }
 
         long lastTxCommitTimeOnServer = 0;
@@ -90,7 +90,7 @@ public class ReadinessHandler extends RequestHandlerBase {
 
     private boolean isSolr6(SolrQueryRequest req) {
         try {
-            invokeHack(req,"getCore","getCoreContainer");
+            invokeMethods(req,"getCore","getCoreContainer");
         } catch (Exception e) {
             return false;
         }
