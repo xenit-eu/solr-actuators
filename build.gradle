@@ -5,10 +5,10 @@ plugins {
 }
 
 subprojects {
-    version = '0.0.1'
+    version = '0.0.2'
 
 
-    boolean isRelease = System.env.BRANCH_NAME?.startsWith("master")
+    boolean isRelease = System.env.BRANCH_NAME?.startsWith("release")
     if (!isRelease)
         version += "-SNAPSHOT"
 
