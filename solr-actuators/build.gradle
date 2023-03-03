@@ -31,10 +31,5 @@ dependencies {
 
 artifacts.add('sharedJar', jar)
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-}
+
+apply from: "${rootProject.projectDir}/publish.gradle"

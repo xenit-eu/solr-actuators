@@ -2,8 +2,8 @@ package eu.xenit.actuators.integrationtesting;
 
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.specification.RequestSpecification;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 
 import static io.restassured.RestAssured.given;
@@ -13,12 +13,11 @@ import static org.hamcrest.core.StringContains.containsString;
 public class SolrSmokeTests {
     static RequestSpecification spec;
 
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
         String flavor = System.getProperty("flavor");
         String basePathSolr = "solr/alfresco/xenit/actuators/readiness";
-	if("solr4".equals(flavor))
-	    basePathSolr = "solr4/alfresco/xenit/actuators/readiness";
+
         String solrHost = System.getProperty("solr.host");
 
         int solrPort = 0;
@@ -40,7 +39,7 @@ public class SolrSmokeTests {
 
 
     @Test
-    public void testActuatorsEndpoint() {
+     void testActuatorsEndpoint() {
         // wait until solr tracks
         long sleepTime = 30000;
         try {

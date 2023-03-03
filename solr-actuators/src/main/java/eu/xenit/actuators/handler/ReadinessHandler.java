@@ -13,35 +13,25 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Method;
+import java.text.MessageFormat;
+
 
 public class ReadinessHandler extends RequestHandlerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(ReadinessHandler.class);
+    private static final String READY = "ready";
     private static final long MAX_LAG = 1800L;
-
-    Object invokeMethods(Object target, String... methods) throws Exception {
-        for (String methodName : methods) {
-            Method method = target.getClass().getMethod(methodName);
-            target = method.invoke(target);
-        }
-        return target;
-    }
 
 
     @Override
-    public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-        AlfrescoCoreAdminHandler coreAdminHandler = null;
-        if(isSolr6(req)) {
-            coreAdminHandler = (AlfrescoCoreAdminHandler) invokeMethods(req,"getCore","getCoreContainer","getMultiCoreHandler");
-        } else {
-            coreAdminHandler = (AlfrescoCoreAdminHandler) invokeMethods(req,"getCore","getCoreDescriptor","getCoreContainer","getMultiCoreHandler");
-        }
+    public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) {
+        AlfrescoCoreAdminHandler
+                coreAdminHandler = (AlfrescoCoreAdminHandler) req.getCore().getCoreContainer().getMultiCoreHandler();
 
-        long lastTxCommitTimeOnServer = 0;
-        long lastChangeSetCommitTimeOnServer = 0;
-        TrackerState metadataTrackerState = null;
-        TrackerState aclsTrackerState = null;
+        long lastTxCommitTimeOnServer;
+        long lastChangeSetCommitTimeOnServer;
+        TrackerState metadataTrackerState;
+        TrackerState aclsTrackerState;
 
         try {
             TrackerRegistry trackerRegistry = coreAdminHandler.getTrackerRegistry();
@@ -50,52 +40,46 @@ public class ReadinessHandler extends RequestHandlerBase {
             MetadataTracker metadataTracker = trackerRegistry.getTrackerForCore(coreName, MetadataTracker.class);
             AclTracker aclTracker = trackerRegistry.getTrackerForCore(coreName, AclTracker.class);
 
-            metadataTrackerState =  metadataTracker.getTrackerState();
+            metadataTrackerState = metadataTracker.getTrackerState();
             aclsTrackerState = aclTracker.getTrackerState();
             lastTxCommitTimeOnServer = metadataTrackerState.getLastTxCommitTimeOnServer();
             lastChangeSetCommitTimeOnServer = aclsTrackerState.getLastChangeSetCommitTimeOnServer();
-        }  catch (Exception e) {
-            rsp.add("ready", "DOWN");
+        } catch (Exception e) {
+            rsp.add(READY, "DOWN");
             rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE, e.getMessage()));
             return;
         }
 
-        if((lastTxCommitTimeOnServer == 0 || lastChangeSetCommitTimeOnServer == 0)) {
-            rsp.add("ready","DOWN");
-            rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,"Solr did not yet get latest values from server"));
+        if ((lastTxCommitTimeOnServer == 0 || lastChangeSetCommitTimeOnServer == 0)) {
+            rsp.add(READY, "DOWN");
+            rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    "Solr did not yet get latest values from server"));
             return;
         }
 
         long lastIndexChangeSetCommitTime = aclsTrackerState.getLastIndexedChangeSetCommitTime();
         long lastIndexTxCommitTime = metadataTrackerState.getLastIndexedTxCommitTime();
         long txLagSeconds = (lastTxCommitTimeOnServer - lastIndexTxCommitTime) / 1000;
-        if(req.getParams().get("info")!=null) {
+        if (req.getParams().get("info") != null) {
             rsp.add("txLag", txLagSeconds);
             rsp.add("lastTxCommitTimeOnServer", lastTxCommitTimeOnServer);
         }
         long changeSetLagSeconds = (lastChangeSetCommitTimeOnServer - lastIndexChangeSetCommitTime) / 1000;
-        if(req.getParams().get("info")!=null) {
+        if (req.getParams().get("info") != null) {
             rsp.add("changeSetLag", changeSetLagSeconds);
             rsp.add("lastChangeSetCommitTimeOnServer", lastChangeSetCommitTimeOnServer);
         }
 
-        if(txLagSeconds >= MAX_LAG || changeSetLagSeconds >= MAX_LAG) {
-            rsp.add("ready","NO");
-            rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,"Lag is larger than permitted: txLag=" + txLagSeconds + ", changeSetLag=" + changeSetLagSeconds + ", MAX_LAG=" + MAX_LAG));
+        if (txLagSeconds >= MAX_LAG || changeSetLagSeconds >= MAX_LAG) {
+            rsp.add(READY, "NO");
+            rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    MessageFormat.format("Lag is larger than permitted: txLag={0}, changeSetLag={1}, MAX_LAG={2}"
+                            , txLagSeconds, changeSetLagSeconds, MAX_LAG)));
             return;
-        } else {
-            rsp.add("ready","UP");
         }
+        rsp.add(READY, "UP");
     }
 
-    private boolean isSolr6(SolrQueryRequest req) {
-        try {
-            invokeMethods(req,"getCore","getCoreContainer");
-        } catch (Exception e) {
-            return false;
-        }
-        return true;
-    }
 
     @Override
     public String getDescription() {

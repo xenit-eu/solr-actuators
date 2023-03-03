@@ -1,16 +1,21 @@
 plugins {
-    id 'eu.xenit.docker' version '5.1.1' apply false
-    id 'eu.xenit.docker-compose' version '5.1.1' apply false
-    id 'de.marcphilipp.nexus-publish' version '0.4.0' apply false
+    id 'eu.xenit.docker' version '5.4.0' apply false
+    id 'eu.xenit.docker-compose' version '5.4.0' apply false
 }
-
+def copyPropertyValueIfExists(sourcePropertyName, targetPropertyName) {
+    if (project.hasProperty(sourcePropertyName)) {
+        project.ext[targetPropertyName] = project.property(sourcePropertyName)
+    }
+}
 subprojects {
-    version = '0.0.3'
+    def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.4'
+    version = baseVersion[1..baseVersion.length() - 1]
 
 
-    boolean isRelease = System.env.BRANCH_NAME?.startsWith("release")
-    if (!isRelease)
-        version += "-SNAPSHOT"
+    copyPropertyValueIfExists('alfresco_nexus_username', 'org.alfresco.maven.nexus.username')
+    copyPropertyValueIfExists('alfresco_nexus_password', 'org.alfresco.maven.nexus.password')
+
+
 
     repositories {
         mavenCentral()
@@ -25,6 +30,4 @@ subprojects {
             }
         }
     }
-
-    apply from: "${rootProject.projectDir}/publish.gradle"
 }
