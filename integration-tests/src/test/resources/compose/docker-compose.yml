@@ -26,8 +26,13 @@ services:
     restart: unless-stopped
     hostname: solr
     ports:
-      - 8080
+      - 8080:8080
+      - 8000:8000
+      - 5000:5000
     environment:
     - ALFRESCO_SSL=none
+    - DEBUG=true
+    - JMX_ENABLED=true
+    - READINESS_MAX_LAG=1300000
     - JAVA_XMX=1024M
     - JAVA_OPTS_SSL=-Dalfresco.secureComms=secret -Dalfresco.secureComms.secret=mysolrsecret
