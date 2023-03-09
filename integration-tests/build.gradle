@@ -2,7 +2,21 @@ plugins {
     id 'java'
     id 'idea'
 }
-
+dependencies {
+    testImplementation group: 'io.rest-assured', name: 'rest-assured', version: '3.0.1'
+    testImplementation group: 'io.rest-assured', name: 'json-path', version: '3.0.1'
+    testImplementation group: 'io.rest-assured', name: 'rest-assured-common', version: '3.0.1'
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:5.4.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:5.4.2"
+    testRuntimeOnly group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: '2.3.2'
+}
+test {
+    enabled = false
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
 subprojects {
     apply plugin: 'java'
     apply plugin: 'eu.xenit.docker'
@@ -11,43 +25,20 @@ subprojects {
 
     description = "Solr ${flavor} with Actuators"
 
-  sourceSets {
-        integrationTest {
-            java {
-                compileClasspath += main.output + test.output
-                runtimeClasspath += main.output + test.output
-                srcDirs = ["${project.parent.projectDir}/src/test/java"]
-            }
-        }
-    }
-    
     configurations {
         actuatorsJar
-        integrationTestCompile.extendsFrom testCompile
-        integrationTestRuntime.extendsFrom testRuntime
     }
 
 
     dependencies {
-        integrationTestCompile group: 'io.rest-assured', name: 'rest-assured', version: '3.0.1'
-        integrationTestCompile group: 'io.rest-assured', name: 'json-path', version: '3.0.1'
-        integrationTestCompile group: 'io.rest-assured', name: 'rest-assured-common', version: '3.0.1'
-        integrationTestCompile group: 'junit', name: 'junit', version: '4.11'
-        integrationTestRuntime group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: '2.3.2'
-
-
         actuatorsJar project(path: ":solr-actuators", configuration: "sharedJar")
     }
 
     task integrationTest(type: Test, group: "verification") {
-        testClassesDirs = sourceSets.integrationTest.output.classesDirs
-        classpath = sourceSets.integrationTest.runtimeClasspath
+        useJUnitPlatform()
+        testClassesDirs = project.parent.sourceSets.test.output.classesDirs
+        classpath = project.parent.sourceSets.test.runtimeClasspath
         outputs.upToDateWhen { false }
-
-        doFirst {
-            dockerCompose.exposeAsSystemProperties(integrationTest)
-            systemProperty("flavor", flavor)	    
-        }
     }
 
 
@@ -56,12 +47,9 @@ subprojects {
 
         dependsOn(configurations.actuatorsJar)
 
-        if(flavor == "solr6") {
+        if (flavor == "solr6") {
             smartCopy "${project.parent.projectDir}/src/test/resources/solr6/solrconfig_insight.xml", "/opt/alfresco-search-services/solrhome/templates/rerank/conf/solrconfig_insight.xml"
             smartCopy configurations.actuatorsJar.singleFile, "/opt/alfresco-search-services/solrhome/lib/"
-        } else {
-            smartCopy "${project.parent.projectDir}/src/test/resources/solr4/solrconfig.xml", "/opt/alfresco/solr4/workspace-SpacesStore/conf/solrconfig.xml"
-            smartCopy configurations.actuatorsJar.singleFile, "/opt/alfresco/solr4/lib/"
         }
     }
 

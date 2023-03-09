@@ -8,7 +8,8 @@ services:
     - 8080
     environment:
     - INDEX
-    - SOLR_SSL=none
+    - SOLR_SSL=secret
+    - GLOBAL_solr.sharedSecret=mysolrsecret
     - GLOBAL_local.transform.service.enabled=false
     - JAVA_XMX=2048M
 
@@ -25,7 +26,13 @@ services:
     restart: unless-stopped
     hostname: solr
     ports:
-      - 8080
+      - 8080:8080
+      - 8000:8000
+      - 5000:5000
     environment:
     - ALFRESCO_SSL=none
-    - JAVA_XMX=1024M    
+    - DEBUG=true
+    - JMX_ENABLED=true
+    - READINESS_MAX_LAG=1300000
+    - JAVA_XMX=1024M
+    - JAVA_OPTS_SSL=-Dalfresco.secureComms=secret -Dalfresco.secureComms.secret=mysolrsecret
