@@ -103,7 +103,7 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
 
     private void checkReplicationHandler(boolean setInfo, SolrQueryResponse rsp) throws Exception {
         SolrRequestHandler handler = core.getRequestHandler(ReplicationHandler.PATH);
-        ReplicationHandler replicationHandler = (ReplicationHandler) handler;
+        RequestHandlerBase replicationHandler = (RequestHandlerBase) handler;
         NamedList<Object> query = new SimpleOrderedMap<>();
         query.add(ReplicationHandler.COMMAND, ReplicationHandler.CMD_RESTORE_STATUS);
         SolrQueryRequest replicationReq = new LocalSolrQueryRequest(core, query);
