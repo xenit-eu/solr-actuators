@@ -7,7 +7,7 @@ group = 'eu.xenit.solr-actuators'
 
 ext {
     solrVersion = '6.6.5'
-    assVersion = '2.0.0'
+    assVersion = '2.0.6'
 }
 
 java {
