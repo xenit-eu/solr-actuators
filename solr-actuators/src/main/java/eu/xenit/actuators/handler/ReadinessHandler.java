@@ -17,12 +17,15 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.invoke.MethodHandles;
 import java.text.MessageFormat;
 
 
 public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAware {
-
+    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String READY = "ready";
     private static final String DOWN = "DOWN";
     private static final String UP = "UP";
@@ -45,10 +48,12 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
             checkReplicationHandler(setInfo, rsp);
 
         } catch (SolrException e) {
+            log.error(e.getMessage(), e);
             rsp.add(READY, DOWN);
             rsp.setException(e);
             return;
         } catch (Exception e) {
+            log.error(e.getMessage(), e);
             rsp.add(READY, DOWN);
             rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE, e.getMessage(), e));
             return;

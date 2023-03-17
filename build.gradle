@@ -8,7 +8,7 @@ def copyPropertyValueIfExists(sourcePropertyName, targetPropertyName) {
     }
 }
 subprojects {
-    def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.5'
+    def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.6'
     version = baseVersion[1..baseVersion.length() - 1]
 
 
