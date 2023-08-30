@@ -8,11 +8,14 @@ group = 'eu.xenit.solr-actuators'
 ext {
     solrVersion = '6.6.5'
     assVersion = '2.0.6'
+    mockitoVersion = '2.27.0'
+    hamcrestVersion = '1.3'
+    slf4jVersion = '1.7.25'
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
     withJavadocJar()
     withSourcesJar()
 }
@@ -27,9 +30,28 @@ dependencies {
         exclude group: 'org.restlet.jee' // Only available in JCenter, not essential in this project.
     }
     compileOnly "org.alfresco:alfresco-search:${assVersion}"
+
+    testImplementation("org.apache.solr:solr-core:${solrVersion}") {
+        exclude group: 'org.restlet.jee' // Only available in JCenter, not essential in this project.
+    }
+    testImplementation "org.alfresco:alfresco-search:${assVersion}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitJupiterVersion}"
+    testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+    testImplementation "org.mockito:mockito-inline:${mockitoVersion}"
+    testImplementation "org.hamcrest:hamcrest-all:${hamcrestVersion}"
+    testImplementation("ch.qos.logback:logback-classic:1.4.7")
+
+    testImplementation group: 'org.slf4j', name: 'slf4j-api', version: "${slf4jVersion}"
+    testImplementation group: 'org.slf4j', name: 'slf4j-simple', version: "${slf4jVersion}"
+
 }
 
 artifacts.add('sharedJar', jar)
 
-
+test {
+    useJUnitPlatform()
+}
 apply from: "${rootProject.projectDir}/publish.gradle"

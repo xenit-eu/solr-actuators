@@ -3,8 +3,9 @@ on:
   push:
   workflow_dispatch:
 env:
-  ORG_GRADLE_PROJECT_alfresco_nexus_username: ${{ secrets.ALFRESCO_NEXUS_USERNAME }}
-  ORG_GRADLE_PROJECT_alfresco_nexus_password: ${{ secrets.ALFRESCO_NEXUS_PASSWORD }}
+  GRADLE_OPTS: >-
+    -Dorg.gradle.project.org.alfresco.maven.nexus.username=${{ secrets.ALFRESCO_NEXUS_USERNAME }} 
+    -Dorg.gradle.project.org.alfresco.maven.nexus.password=${{ secrets.ALFRESCO_NEXUS_PASSWORD }}
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
@@ -22,8 +23,7 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           cache-read-only: false
-          arguments: |
-            integrationTest
+          arguments: integrationTest
       - name: Upload Test Artifact
         if: success() || failure()
         uses: actions/upload-artifact@v3
