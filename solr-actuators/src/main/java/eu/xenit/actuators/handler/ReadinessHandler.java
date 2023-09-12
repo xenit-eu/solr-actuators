@@ -17,12 +17,14 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.invoke.MethodHandles;
 import java.text.MessageFormat;
 
-
 public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAware {
-
+    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String READY = "ready";
     private static final String DOWN = "DOWN";
     private static final String UP = "UP";
@@ -47,10 +49,17 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
         } catch (SolrException e) {
             rsp.add(READY, DOWN);
             rsp.setException(e);
+            log.error("solr readiness probe failed with status :'{}' and message: '{}' ",
+                    e.code(),
+                    e.getMessage());
+
             return;
         } catch (Exception e) {
             rsp.add(READY, DOWN);
             rsp.setException(new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE, e.getMessage(), e));
+            log.error("solr readiness probe failed with status :'{}' and message: '{}' ",
+                    SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    e.getMessage());
             return;
         }
         rsp.add(READY, UP);
@@ -71,7 +80,7 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
 
         if ((lastTxCommitTimeOnServer == 0 || lastChangeSetCommitTimeOnServer == 0)) {
             throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
-                    "Solr did not yet get latest values from server");
+                    "Solr did not yet get latest values from alfresco server");
         }
 
         checkMaxLag(setInfo, rsp,

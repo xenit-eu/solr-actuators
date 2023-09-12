@@ -2,21 +2,12 @@ plugins {
     id 'eu.xenit.docker' version '5.4.0' apply false
     id 'eu.xenit.docker-compose' version '5.4.0' apply false
 }
-def copyPropertyValueIfExists(sourcePropertyName, targetPropertyName) {
-    if (project.hasProperty(sourcePropertyName)) {
-        project.ext[targetPropertyName] = project.property(sourcePropertyName)
-    }
-}
 subprojects {
     def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.5'
     version = baseVersion[1..baseVersion.length() - 1]
-
-
-    copyPropertyValueIfExists('alfresco_nexus_username', 'org.alfresco.maven.nexus.username')
-    copyPropertyValueIfExists('alfresco_nexus_password', 'org.alfresco.maven.nexus.password')
-
-
-
+    ext {
+        junitJupiterVersion = '5.4.2'
+    }
     repositories {
         mavenCentral()
         maven {
