@@ -3,7 +3,7 @@ plugins {
     id 'eu.xenit.docker-compose' version '5.4.0' apply false
 }
 subprojects {
-    def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.5'
+    def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.7'
     version = baseVersion[1..baseVersion.length() - 1]
     ext {
         junitJupiterVersion = '5.4.2'
