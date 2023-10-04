@@ -40,18 +40,15 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
                     .getCoreContainer()
                     .getMultiCoreHandler();
             boolean setInfo = req.getParams().get("info") != null;
-            checkTransactionResponse(setInfo, rsp,
-                    coreAdminHandler.getTrackerRegistry(),
-                    solrCore.getName());
+
+            checkTransactionResponse(setInfo, rsp, coreAdminHandler.getTrackerRegistry(), solrCore.getName());
 
             checkReplicationHandler(setInfo, rsp);
 
         } catch (SolrException e) {
             rsp.add(READY, DOWN);
             rsp.setException(e);
-            log.error("solr readiness probe failed with status :'{}' and message: '{}' ",
-                    e.code(),
-                    e.getMessage());
+            log.error("solr readiness probe failed with status :'{}' and message: '{}' ", e.code(), e.getMessage());
 
             return;
         } catch (Exception e) {
@@ -69,48 +66,69 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
                                           SolrQueryResponse rsp,
                                           TrackerRegistry trackerRegistry,
                                           String coreName) {
-        MetadataTracker metadataTracker = trackerRegistry.getTrackerForCore(coreName, MetadataTracker.class);
-        AclTracker aclTracker = trackerRegistry.getTrackerForCore(coreName, AclTracker.class);
 
-        TrackerState metadataTrackerState = metadataTracker.getTrackerState();
-        TrackerState aclsTrackerState = aclTracker.getTrackerState();
-
-        long lastTxCommitTimeOnServer = metadataTrackerState.getLastTxCommitTimeOnServer();
-        long lastChangeSetCommitTimeOnServer = aclsTrackerState.getLastChangeSetCommitTimeOnServer();
-
-        if ((lastTxCommitTimeOnServer == 0 || lastChangeSetCommitTimeOnServer == 0)) {
-            throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
-                    "Solr did not yet get latest values from alfresco server");
-        }
-
-        checkMaxLag(setInfo, rsp,
-                lastTxCommitTimeOnServer,
-                lastChangeSetCommitTimeOnServer,
-                metadataTrackerState.getLastIndexedTxCommitTime(),
-                aclsTrackerState.getLastIndexedChangeSetCommitTime());
+        checkTxResponse(setInfo, rsp, trackerRegistry, coreName);
+        checkChangeSetResponse(setInfo, rsp, trackerRegistry, coreName);
     }
 
-    private void checkMaxLag(boolean setInfo, SolrQueryResponse rsp,
-                             long lastTxCommitTimeOnServer,
-                             long lastChangeSetCommitTimeOnServer,
-                             long lastIndexTxCommitTime,
-                             long lastIndexChangeSetCommitTime) {
+    private void checkTxResponse(boolean setInfo,
+                                 SolrQueryResponse rsp, TrackerRegistry trackerRegistry,
+                                 String coreName) {
+        if (!config.isTxValidationEnabled()) return;
+
+        MetadataTracker metadataTracker = trackerRegistry.getTrackerForCore(coreName, MetadataTracker.class);
+        TrackerState metadataTrackerState = metadataTracker.getTrackerState();
+
+        long lastTxCommitTimeOnServer = metadataTrackerState.getLastTxCommitTimeOnServer();
+        long lastIndexTxCommitTime = metadataTrackerState.getLastIndexedTxCommitTime();
         long txLag = (lastTxCommitTimeOnServer - lastIndexTxCommitTime);
-        long changeSetLag = (lastChangeSetCommitTimeOnServer - lastIndexChangeSetCommitTime);
+
         if (setInfo) {
             rsp.add("txLag", txLag);
             rsp.add("lastTxCommitTimeOnServer", lastTxCommitTimeOnServer);
+            rsp.add("lastIndexTxCommitTime", lastIndexTxCommitTime);
+        }
+        if (lastTxCommitTimeOnServer == 0) {
+            throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    "Solr did not yet get latest Tx values from alfresco server");
+        }
+        if (txLag >= config.getMaxLag()) {
+            throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    MessageFormat.format("Tx lag is larger than permitted: txLag={0}, MAX_LAG={1}"
+                            , txLag, config.getMaxLag()));
+        }
+    }
+
+    private void checkChangeSetResponse(boolean setInfo,
+                                        SolrQueryResponse rsp,
+                                        TrackerRegistry trackerRegistry,
+                                        String coreName) {
+        if (!config.isChangeSetValidationEnabled()) return;
+        AclTracker aclTracker = trackerRegistry.getTrackerForCore(coreName, AclTracker.class);
+        TrackerState aclsTrackerState = aclTracker.getTrackerState();
+
+        long lastChangeSetCommitTimeOnServer = aclsTrackerState.getLastChangeSetCommitTimeOnServer();
+        long lastIndexChangeSetCommitTime = aclsTrackerState.getLastIndexedChangeSetCommitTime();
+        long changeSetLag = (lastChangeSetCommitTimeOnServer - lastIndexChangeSetCommitTime);
+
+        if (setInfo) {
             rsp.add("changeSetLag", changeSetLag);
             rsp.add("lastChangeSetCommitTimeOnServer", lastChangeSetCommitTimeOnServer);
+            rsp.add("lastIndexChangeSetCommitTime", lastIndexChangeSetCommitTime);
         }
-        if (txLag >= config.getMaxLag() || changeSetLag >= config.getMaxLag()) {
+        if (lastChangeSetCommitTimeOnServer == 0) {
             throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
-                    MessageFormat.format("Lag is larger than permitted: txLag={0}, changeSetLag={1}, MAX_LAG={2}"
-                            , txLag, changeSetLag, config.getMaxLag()));
+                    "Solr did not yet get latest change set values from alfresco server");
+        }
+        if (changeSetLag >= config.getMaxLag()) {
+            throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    MessageFormat.format("Change set lag is larger than permitted:  changeSetLag={0}, MAX_LAG={1}"
+                            , changeSetLag, config.getMaxLag()));
         }
     }
 
     private void checkReplicationHandler(boolean setInfo, SolrQueryResponse rsp) throws Exception {
+        if (!config.isReplicationValidationEnabled()) return;
         SolrRequestHandler handler = core.getRequestHandler(ReplicationHandler.PATH);
         RequestHandlerBase replicationHandler = (RequestHandlerBase) handler;
         NamedList<Object> query = new SimpleOrderedMap<>();
