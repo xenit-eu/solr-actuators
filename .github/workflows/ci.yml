@@ -18,7 +18,7 @@ jobs:
           java-version: 11
       - name: Login to Docker
         run: |
-          echo '${{ secrets.HARBOR_PASSWORD }}' | docker login private.docker.xenit.eu --username '${{ secrets.HARBOR_USER }}' --password-stdin
+          echo '${{ secrets.HARBOR_PASSWORD }}' | docker login docker.xenit.eu --username '${{ secrets.HARBOR_USER }}' --password-stdin
       - name: Test
         uses: gradle/gradle-build-action@v2
         with:
