@@ -1,6 +1,6 @@
 plugins {
-    id 'eu.xenit.docker' version '5.4.0' apply false
-    id 'eu.xenit.docker-compose' version '5.4.0' apply false
+    id 'eu.xenit.docker' version '5.5.1' apply false
+    id 'eu.xenit.docker-compose' version '5.5.1' apply false
 }
 subprojects {
     def baseVersion = System.getenv("TAG_VERSION") ?: 'v0.0.7'
