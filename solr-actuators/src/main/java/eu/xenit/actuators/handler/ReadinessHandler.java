@@ -5,6 +5,7 @@ import org.alfresco.solr.AlfrescoCoreAdminHandler;
 import org.alfresco.solr.TrackerState;
 import org.alfresco.solr.tracker.AclTracker;
 import org.alfresco.solr.tracker.MetadataTracker;
+import org.alfresco.solr.tracker.ModelTracker;
 import org.alfresco.solr.tracker.TrackerRegistry;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
@@ -21,6 +22,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.text.MessageFormat;
 
 public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAware {
@@ -29,7 +33,12 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
     private static final String DOWN = "DOWN";
     private static final String UP = "UP";
     private static final ReadinessConfig config = new ReadinessConfig();
-    SolrCore core;
+
+    private SolrCore core;
+
+    private AtomicBoolean isModelLoadInProgress = new AtomicBoolean(false);
+
+    private Executor modelLoadExecutor;
 
     @Override
     public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) {
@@ -40,6 +49,8 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
                     .getCoreContainer()
                     .getMultiCoreHandler();
             boolean setInfo = req.getParams().get("info") != null;
+
+            checkModelResponse(setInfo, rsp, coreAdminHandler.getTrackerRegistry(), solrCore.getName());
 
             checkTransactionResponse(setInfo, rsp, coreAdminHandler.getTrackerRegistry(), solrCore.getName());
 
@@ -60,6 +71,24 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
             return;
         }
         rsp.add(READY, UP);
+    }
+
+    private void checkModelResponse(boolean setInfo,
+                                          SolrQueryResponse rsp,
+                                          TrackerRegistry trackerRegistry,
+                                          String coreName) {
+        if (!config.isModelLoadValidationEnabled()) return;
+
+        boolean hasModels = trackerRegistry.getModelTracker().hasModels();
+        if (setInfo) {
+            rsp.add("hasModels", hasModels);
+        }
+
+        if (!hasModels && config.isModelLoadRetriggerEnabled()) {
+            loadModels(trackerRegistry.getModelTracker());
+            throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
+                    "Solr did not yet get load dictionary models from alfresco server");
+        }
     }
 
     private void checkTransactionResponse(boolean setInfo,
@@ -122,8 +151,8 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
         }
         if (changeSetLag >= config.getMaxLag()) {
             throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
-                    MessageFormat.format("Change set lag is larger than permitted:  changeSetLag={0}, MAX_LAG={1}"
-                            , changeSetLag, config.getMaxLag()));
+                    MessageFormat.format("Change set lag is larger than permitted:  changeSetLag={0}, MAX_LAG={1}",
+                            changeSetLag, config.getMaxLag()));
         }
     }
 
@@ -148,6 +177,26 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
         } else if ("failed".equals(status)) {
             throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
                     "Replication handler restore has failed");
+        }
+    }
+
+    private void loadModels(ModelTracker modelTracker)
+    {
+        if (this.isModelLoadInProgress.compareAndSet(false, true)) {
+
+            if (this.modelLoadExecutor == null) {
+                this.modelLoadExecutor = Executors.newFixedThreadPool(1);
+            }
+
+            this.modelLoadExecutor.execute(() -> {
+                try {
+                    if (!modelTracker.hasModels()) {
+                        modelTracker.ensureFirstModelSync();
+                    }
+                } finally {
+                    this.isModelLoadInProgress.compareAndSet(true, false);
+                }
+            });
         }
     }
 
