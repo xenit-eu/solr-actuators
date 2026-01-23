@@ -84,7 +84,7 @@ public class ReadinessHandler extends RequestHandlerBase implements SolrCoreAwar
             rsp.add("hasModels", hasModels);
         }
 
-        if (!hasModels) {
+        if (!hasModels && config.isModelLoadRetriggerEnabled()) {
             loadModels(trackerRegistry.getModelTracker());
             throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,
                     "Solr did not yet get load dictionary models from alfresco server");
